@@ -145,7 +145,7 @@ class TheRookies(Player):
         
         # Run MCTS while time still available
         # Selection, Expansion, Simulation, Backprop
-        
+        # Need to make tree of data
         
         
         #if seconds_left == 0:
