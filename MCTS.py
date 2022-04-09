@@ -8,7 +8,7 @@ Created on Sat Apr  9 13:06:40 2022
 import numpy as np
 from collections import defaultdict
 
-class MCTS_Node():
+class MCTS():
 	
 	def __init__(self, state, parent=None, parent_action=None):
 		self.state = state

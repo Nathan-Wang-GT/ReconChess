@@ -14,6 +14,7 @@ import chess
 from player import Player
 from collections import defaultdict
 import numpy as np
+from MCTS import *
 
 
 # TODO: Rename this class to what you would like your bot to be named during the game.
@@ -23,6 +24,35 @@ class TheRookies(Player):
         self.board = None
         self.color = None
         self.captured = None
+        
+        self.root = None
+        self.curr = None
+        
+        self.num_moves = 0
+        
+        self.opponent_castled = False
+        
+        
+        # Holds array of [piece location, whether it's moved]
+        self.opponent_king_loc = None
+        self.opponent_knights = None
+        self.opponent_bishops = None
+        self.opponent_queens = None
+        self.opponent_rooks = None
+        self.opponent_pawns = None
+        
+        self.chess_dict = {
+            "k" : self.opponent_king_loc,
+            "q" : self.opponent_queens,
+            "n" : self.opponent_knights,
+            "r" : self.opponent_rooks,
+            "p" : self.opponent_pawns,
+            "b" : self.opponent_bishops
+        }
+        
+        #self.keys = ["k", "q", "n", "r", "p", "b"]
+        
+        self.pawns = None
         pass
         
     def handle_game_start(self, color, board):
@@ -44,7 +74,51 @@ class TheRookies(Player):
         self.board = board
         self.color = color
         
+        # Create root node for MCTS
+        
+        self.root = MCTS(board)
+        self.curr = self.root
+        
+        # Set king location
+        if self.color == chess.WHITE:
+            self.opponent_king_loc = [[chess.E8, False]]
+            self.opponent_pawns = [[chess.square(x, 6), False] for x in range(8)]
+            self.opponent_queens = [[chess.D8, False]]
+            self.opponent_bishops = [[chess.C8, False], [chess.F8, False]]
+            self.opponent_rooks = [[chess.A8, False], [chess.H8, False]]
+            self.opponent_knights = [[chess.B8, False], [chess.G8, False]]
+            
+            self.pawns = [chess.square(x, 1) for x in range(8)]
+            
+            
+            
+            
+        else:
+            self.opponent_king_loc = [[chess.E1, False]]
+            self.opponent_pawns = [[chess.square(x, 1), False] for x in range(8)]
+            self.opponent_queens = [[chess.D1, False]]
+            self.opponent_bishops = [[chess.C1, False], [chess.F1, False]]
+            self.opponent_rooks = [[chess.A1, False], [chess.H1, False]]
+            self.opponent_knights = [[chess.B1, False], [chess.G1, False]]
+            
+            
+            self.pawns = [chess.square(x, 6) for x in range(8)]
+        
+        
         pass
+    
+    def find_piece(self, location):
+        
+            
+        for x in self.chess_dict:
+            
+            for piece in self.chess_dict[x]:
+                
+                if not piece[1] and piece[0] == location:
+                    return (x, piece)
+        
+        return None
+        
         
     def handle_opponent_move_result(self, captured_piece, captured_square):
         """
@@ -56,6 +130,8 @@ class TheRookies(Player):
         
         if captured_piece:
             self.board.remove_piece_at(captured_square)
+            if captured_piece in self.pawns:
+                self.pawns.remove(captured_piece)
         
         self.captured = captured_square
         
@@ -74,22 +150,124 @@ class TheRookies(Player):
         """
         # TODO: update this method
         
-        if self.captured:
-            return self.captured
+        # Sense around last captured piece
+        if self.captured is not None:
+        
+            #location = chess.parse_square(chess.square_name(self.captured))
+            file = chess.square_file(self.captured)
+            rank = chess.square_rank(self.captured)
+            
+            
+            # Fully utilize all 9 squares for sense
+            if file == 0:
+                file = 1
+            elif file == 7:
+                file = 6
+                
+            if rank == 0:
+                rank = 1
+            elif rank == 7:
+                rank = 6
+                
+            return chess.square(file, rank)
         
         
-        # CHOOSE A SENSE OUT OF ALL POSSIBLE ACTIONS
         
-        move = self.choose_move(possible_moves, seconds_left)
+        # If no castling occured, keep eye on king
+        if not self.opponent_castled:
+            
+            file = chess.square_file(self.opponent_king_loc)
+            rank = chess.square_rank(self.opponent_king_loc)
+            
+            # Fully utilize all 9 squares for sense
+            if file == 0:
+                file = 1
+            elif file == 7:
+                file = 6
+                
+            if rank == 0:
+                rank = 1
+            elif rank == 7:
+                rank = 6
+            
+            return chess.square(file, rank)
         
-        if move is not None and self.board.piece_at(move) is not None:
-            return move.to_square
+        # If castled, keep track of 
+        else:
+            
+            # Check king location every other time
+            if self.num_moves % 2 == 0 or len(self.pawns) == 0:
+                
+                file = chess.square_file(self.opponent_king_loc)
+                rank = chess.square_rank(self.opponent_king_loc)
+                
+                # Fully utilize all 9 squares for sense
+                if file == 0:
+                    file = 1
+                elif file == 7:
+                    file = 6
+                    
+                if rank == 0:
+                    rank = 1
+                elif rank == 7:
+                    rank = 6
+                
+                return chess.square(file, rank)
+                
+            else:
+                
+                distances = [chess.square_distance(self.opponent_king_loc, x) for x in self.pawns]
+                
+                closest_pawn = self.pawns[np.argmin(distances)]
+                
+                direction = 2
+                if self.color == chess.BLACK:
+                    direction = -2
+                
+                file = chess.square_file(closest_pawn)
+                
+                if file == 0:
+                    file = 1
+                elif file == 7:
+                    file = 6
+                    
+                rank = chess.square_rank(closest_pawn)
+                
+                if self.color == chess.WHITE and rank == 6:
+                    
+                    return chess.square(file, rank)
+                
+                elif self.color == chess.BLACK and rank == 1:
+                    
+                    return chess.square(file, rank)
+                
+                else:
+                    
+                    rank = rank + direction
+                    
+                    if rank == 0:
+                        rank = 1
+                    elif rank == 7:
+                        rank = 6
+                        
+                    return chess.square(file, rank)
+                
+                
+                
+                #return 
+            
         
-        for location, piece in self.board.piece_map().items():
-            if piece.color == self.color:
-                possible_sense.remove(location)
+        
+        #move = self.choose_move(possible_moves, seconds_left)
+        
+        #if move is not None and self.board.piece_at(move) is not None:
+        #    return move.to_square
+        
+        #for location, piece in self.board.piece_map().items():
+        #    if piece.color == self.color:
+        #        possible_sense.remove(location)
     
-        return random.choice(possible_sense)
+        #return random.choice(possible_sense)
         
     def handle_sense_result(self, sense_result):
         """
@@ -109,6 +287,50 @@ class TheRookies(Player):
         for location, piece in sense_result:
             
             self.board.set_piece_at(location, piece)
+            
+            result = self.find_piece(location)
+
+                
+            if result is not None and result[0] != piece.symbol():
+                result[1][1] = True
+                
+            if piece is not None and piece.color != self.color:
+                
+                piece_type = piece.symbol().lower()
+                
+                if piece_type == result[0]:
+                    
+                    continue
+                
+                else:
+                    
+                    limbo = []
+                    for chess_piece in self.chess_dict[piece_type]:
+                    
+                        if chess_piece[1] == True:
+                            
+                            limbo.append(chess_piece)
+                    
+                    if len(limbo) == 0:
+                        
+                        limbo = self.chess_dict[piece_type]
+                    
+                    
+                    distance = [chess.square_distance(location, x) for x in limbo]
+                    
+                    limbo[np.argmin(distance)] = [location, False]
+                    
+                        
+                    
+                
+                
+                        
+                    
+                    
+                
+                
+                
+                
             
         
         # If unique piece was sensed and does not match previous board sense, update (King, Queen)
@@ -171,6 +393,8 @@ class TheRookies(Player):
         if taken_move is not None:
             self.board.push(taken_move)
             
+        self.num_moves = self.num_moves + 1
+            
         pass
         
     def handle_game_end(self, winner_color, win_reason):  # possible GameHistory object...
@@ -196,143 +420,7 @@ class TheRookies(Player):
     
     
 	
-class MCTS_Node():
-	
-	def __init__(self, state, parent=None, parent_action=None):
-		self.state = state
-		self.parent = parent
-		self.parent_action = parent_action
-		self.children = []
-		self.num_visits = 0
-		self.results = defaultdict(int)
-		self.results[1] = 0
-		self.results[-1] = 0
-		self.untried_actions = None
-		self.untried_actions = self.get_untried_actions()
-		return
-	
-	def get_untried_actions(self):
-		"""
-		returns list of untried actions from a given state 
-		"""
-		self.untried_actions = self.state.get_legal_actions()
-		return self.untried_actions
-	
-	def q(self):
-		"""
-		returns difference of wins - losses
-		"""
-		wins = self.results[1]
-		losses = self.results[-1]
-		return wins-losses
-	
-	def n(self):
-		"""
-		return number of visits
-	   """
-		return self.num_visits
-	
-	def expand(self):
-		"""
-		next state depends on which action is chosen
-		append all possible child nodes (correspond to generated states) to children array,
-		return child_node
-		"""
-		action = self.untried_actions.pop()
-		next_state = self.state.move(action)
-		child_node = MCTS_Node(next_state, parent=self, parent_action=action)
-		self.children.append(child_node)
-		return child_node
-	
-	def is_terminal_node(self):
-		"""
-		check if current node is terminal or not (terminal node indicates game is over)
-		"""
-		return self.state.is_game_over()
-	
-	def rollout(self):
-		"""
-		from current state, entire game is simulated until end
-		win -> 1, loss -> -1, draw -> 0
-		"""
-		current_rollout_state = self.state
-		while not current_rollout_state.is_game_over():
-			possible_moves = current_rollout_state.get_legal_actions()
-			action = self.rollout_policy(possible_moves)
-			current_rollout_state = current_rollout_state.move(action)
-		return current_rollout_state.game_result()
-	
-	def backprop(self, result):
-		"""
-		update statistics for all nodes
-		until parent node is reached, for each node, num_visits += 1
-		if result is 1 (win), increment win by 1
-		otherwise if result is loss, increment loss by 1
-		"""
-		self.num_visits += 1
-		self.results[result] += 1
-		if self.parent:
-			self.parent.backprop(result)
-			
-	def is_fully_expanded(self):
-		"""
-		all actions are popped out of get_untried_actions() one by one
-		when it is empty (size is 0), it is fully expanded
-		"""
-		return len(self.untried_actions) == 0
-	
-	def best_child(self, c_param=0.1):
-		"""
-		once fully expanded, select best child out of children array
-		weighs exploitation (c.q()) and exploration (c.n())
-		"""
-		choices_weights = [(c.q() / c.n()) + c_param * np.sqrt((2 * np.log(self.n()) / c.n())) for c in self.children]
-		return self.children[np.argmax(choices_weights)]
-	
-	def rollout_policy(self, possible_moves):
-		"""
-		randomly selects a move out of possible moves, AKA random playout
-		"""
-		return possible_moves[np.random.randint(len(possible_moves))]
-	
-	def tree_policy(self):
-		"""
-		select node to run rollout
-		"""
-		current_node = self
-		while not current_node.is_terminal_node():
-			if not current_node.is_fully_expanded():
-				return current_node.expand()
-			else:
-				current_node = current_node.best_child()
-		return current_node
-	
-	def best_action(self):
-		"""
-		returns node corresponding to best possible move
-		carries out expansion, simulation, and backpropagation
-		"""
-		num_simulations = 100
-		for i in range(num_simulations):
-			v = self.tree_policy()
-			reward = v.rollout()
-			v.backprop(reward)
-		return self.best_child(c_param=0)
-		
-	
-	'''
-	NEED TO IMPLEMENT:
-		get_legal_actions(self)
-		is_game_over(self)
-		game_result(self)
-		move(self, action)
-	'''
-	
-	def main():
-		root = MCTS_Node(state = initial_state)
-		selected_node = root.best_action()
-		return
-		
+
 		
 	
 	
