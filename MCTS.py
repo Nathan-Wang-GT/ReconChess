@@ -10,7 +10,7 @@ from collections import defaultdict
 
 class MCTS():
 	
-	def __init__(self, state, parent=None, parent_action=None):
+	def __init__(self, state, reward_val, parent=None, parent_action=None):
 		self.state = state
 		self.parent = parent
 		self.parent_action = parent_action
@@ -20,7 +20,8 @@ class MCTS():
 		self.results[1] = 0
 		self.results[-1] = 0
 		self.untried_actions = None
-		self.untried_actions = self.get_untried_actions()
+        self.untried_actions = self.get_untried_actions()
+        self.reward_val = reward_val
 		return
 	
 	def get_untried_actions(self):

@@ -21,9 +21,14 @@ from MCTS import *
 class TheRookies(Player):
 
     def __init__(self):
+        
+        self.game_board = None #chess.BaseBoard()
+        
         self.board = None
         self.color = None
         self.captured = None
+        
+        self.game_reward = 0
         
         self.root = None
         self.curr = None
@@ -50,6 +55,14 @@ class TheRookies(Player):
             "b" : self.opponent_bishops
         }
         
+        self.piece_reward = {
+            "q" : 8,
+            "n" : 3,
+            "r" : 5,
+            "p" : 1,
+            "b" : 3
+        }
+        
         #self.keys = ["k", "q", "n", "r", "p", "b"]
         
         self.pawns = None
@@ -71,12 +84,14 @@ class TheRookies(Player):
         else:
             return "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr"
         '''
+        self.game_board = chess.BaseBoard()
+        
         self.board = board
         self.color = color
         
         # Create root node for MCTS
         
-        self.root = MCTS(board)
+        self.root = MCTS(board, 0)
         self.curr = self.root
         
         # Set king location
@@ -89,8 +104,13 @@ class TheRookies(Player):
             self.opponent_knights = [[chess.B8, False], [chess.G8, False]]
             
             self.pawns = [chess.square(x, 1) for x in range(8)]
-            
-            
+            '''
+            self.king = [chess.E1]
+            self.queens = [chess.D1]
+            self.bishops = [chess.C1, chess.F1]
+            self.opponent_rooks = [[chess.A1, False], [chess.H1, False]]
+            self.opponent_knights = [[chess.B1, False], [chess.G1, False]]
+            '''
             
             
         else:
@@ -127,15 +147,27 @@ class TheRookies(Player):
         :param captured_piece: bool - true if your opponents captured your piece with their last move
         :param captured_square: chess.Square - position where your piece was captured
         """
+        piece = None
         
         if captured_piece:
             self.board.remove_piece_at(captured_square)
+            
+            piece = chess.piece_at(captured_piece).symbol().lower()
+                
+            
+            self.game_board.remove_piece_at(captured_piece)
             if captured_piece in self.pawns:
                 self.pawns.remove(captured_piece)
+                
+            
         
         self.captured = captured_square
         
-        pass
+        if piece is not None:
+            return self.piece_reward[piece]
+        return None
+        
+        #pass
 
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         """
@@ -189,6 +221,8 @@ class TheRookies(Player):
                 rank = 1
             elif rank == 7:
                 rank = 6
+            
+            
             
             return chess.square(file, rank)
         
@@ -294,6 +328,7 @@ class TheRookies(Player):
             if result is not None and result[0] != piece.symbol():
                 result[1][1] = True
                 
+                
             if piece is not None and piece.color != self.color:
                 
                 piece_type = piece.symbol().lower()
@@ -319,6 +354,8 @@ class TheRookies(Player):
                     distance = [chess.square_distance(location, x) for x in limbo]
                     
                     limbo[np.argmin(distance)] = [location, False]
+                    
+                    
                     
                         
                     
@@ -357,12 +394,17 @@ class TheRookies(Player):
         #choice = random.choice(possible_moves)
         
         # Win condition
+        '''
         if self.board.king(not self.color):
             
             valid_wins = self.board.attackers(self.color, self.board.king(not self.color))
             if valid_wins:
                 
                 return chess.Move(valid_wins.pop(), self.board.king(not self.color))
+        '''
+        
+        
+        
         
         
         # Run MCTS while time still available
@@ -392,6 +434,7 @@ class TheRookies(Player):
         
         if taken_move is not None:
             self.board.push(taken_move)
+            
             
         self.num_moves = self.num_moves + 1
             
