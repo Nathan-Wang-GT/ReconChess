@@ -137,12 +137,14 @@ class MCTS_Node():
             v.backprop(reward)
         return self.best_child(c_param=0)
 
+
+    ## need a get_legal_actions() for own moves and another one for opponent moves
     def get_legal_actions(self):
         """
         construct list of all possible actions from current state
         returns a dynamic list
         """
-        return self.state.legal_moves
+        return list(self.state.legal_moves)
     
     def is_game_over(self):
         """
@@ -181,9 +183,12 @@ class MCTS_Node():
         points_b = num_b_p * 1 + num_b_r * 5 + num_b_n * 3 + num_b_b * 3 + num_b_q * 8 + num_b_k * 20
 
         if self.color is chess.WHITE:
-            return points_w - points_b
+            reward = points_w - points_b
+        else:
+            reward = points_b - points_w
+            
+        return np.sign(reward)
         
-        return points_b - points_w
         
         
         
@@ -194,7 +199,13 @@ class MCTS_Node():
         change state of board with new action taken
         returns new state
         """
+        
+        # update board with chosen move
         self.state.push(action)
+        
+        # randomly get opponent move
+        
+        
         return self.state
         
     
