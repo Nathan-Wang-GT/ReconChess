@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 """
-File Name:      nwang309_chuang371.py
-Authors:        Nathan Wang + Celina Huang
+File Name:      nwang309_chuang371_avitale6.py
+Authors:        Nathan Wang + Celina Huang + Alex Vitale
 Date:           4/2/22
 
 Description:    Python file for my agent.
@@ -12,9 +12,12 @@ Source:         Adapted from recon-chess (https://pypi.org/project/reconchess/)
 import random
 import chess
 from player import Player
-from collections import defaultdict
+#from collections import defaultdict
 import numpy as np
-from MCTS import *
+#from MCTS import *
+import MCTS
+
+MCTS_Node = MCTS.MCTS_Node()
 
 
 # TODO: Rename this class to what you would like your bot to be named during the game.
@@ -354,21 +357,6 @@ class TheRookies(Player):
                     distance = [chess.square_distance(location, x) for x in limbo]
                     
                     limbo[np.argmin(distance)] = [location, False]
-                    
-                    
-                    
-                        
-                    
-                
-                
-                        
-                    
-                    
-                
-                
-                
-                
-            
         
         # If unique piece was sensed and does not match previous board sense, update (King, Queen)
         
@@ -403,13 +391,14 @@ class TheRookies(Player):
                 return chess.Move(valid_wins.pop(), self.board.king(not self.color))
         '''
         
-        
-        
-        
+    
         
         # Run MCTS while time still available
         # Selection, Expansion, Simulation, Backprop
         # Need to make tree of data
+        initial_state = self.board.copy()
+        root = MCTS_Node(state = initial_state, reward_val = 0, color = self.color)
+        selected_move = root.best_action()
         
         
         #if seconds_left == 0:
