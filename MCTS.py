@@ -11,29 +11,35 @@ Source:         Adapted from https://ai-boson.github.io/mcts/
 import numpy as np
 from collections import defaultdict
 import chess
+import time
 
 class MCTS_Node():
 
-    def __init__(self, state, reward_val, color, parent=None, parent_action=None):
+    def __init__(self, state, reward_val, color, num_iter, max_iter, start_time, parent=None, parent_action=None):
         self.state = state
+        self.baseboard_state = chess.BaseBoard(state.board_fen())
         self.parent = parent
         self.parent_action = parent_action
         self.children = []
         self.num_visits = 0
         self.results = defaultdict(int)
-        #self.results[1] = 0
-        #self.results[-1] = 0
+        self.results[1] = 0
+        self.results[0] = 0
+        self.results[-1] = 0
         #self.untried_actions = None
+        self.color = color
         self.untried_actions = self.get_untried_actions()
         self.reward_val = reward_val
-        self.color = color
+        self.num_iter = num_iter
+        self.max_iter = max_iter
+        self.start_time = start_time
         return
 
     def get_untried_actions(self):
         """
         returns list of untried actions from a given state 
         """
-        self.untried_actions = self.state.get_legal_actions()
+        self.untried_actions = self.get_legal_actions()
         return self.untried_actions
 
     def q(self):
@@ -57,8 +63,14 @@ class MCTS_Node():
         return child_node
         """
         action = self.untried_actions.pop()
-        next_state = self.state.move(action)
-        child_node = MCTS_Node(next_state, 0, self.color, parent=self, parent_action=action)
+        next_state = self.move(action)
+        
+        if self.color is chess.WHITE:
+            next_color = chess.BLACK
+        else:
+            next_color = chess.WHITE
+        
+        child_node = MCTS_Node(next_state, 0, color = next_color, start_time = self.start_time, parent=self, parent_action=action, num_iter = self.num_iter+1, max_iter = self.max_iter)
         self.children.append(child_node)
         return child_node
 
@@ -75,9 +87,11 @@ class MCTS_Node():
         """
         current_rollout_state = self.state
         while not current_rollout_state.is_game_over():
-            possible_moves = current_rollout_state.get_legal_actions()
+            #possible_moves = current_rollout_state.get_legal_actions()
+            possible_moves = self.get_legal_actions()
             action = self.rollout_policy(possible_moves)
-            current_rollout_state = current_rollout_state.move(action)
+            #current_rollout_state = current_rollout_state.move(action)
+            current_rollout_state = self.move(action)
         return current_rollout_state.game_result()
 
     def backprop(self, result):
@@ -88,7 +102,7 @@ class MCTS_Node():
         otherwise if result is loss, increment loss by 1
         """
         self.num_visits += 1
-        self.reward_val += result
+        self.results[result] += 1
         if self.parent:
             self.parent.backprop(result)
 
@@ -111,6 +125,7 @@ class MCTS_Node():
         """
         randomly selects a move out of possible moves, AKA random playout
         """
+        #print(possible_moves)
         return possible_moves[np.random.randint(len(possible_moves))]
 
     def tree_policy(self):
@@ -130,28 +145,53 @@ class MCTS_Node():
         returns node corresponding to best possible move
         carries out expansion, simulation, and backpropagation
         """
-        num_simulations = 100
-        for i in range(num_simulations):
+        #num_simulations = 100
+        #for i in range(num_simulations):
+        while True:
             v = self.tree_policy()
             reward = v.rollout()
             v.backprop(reward)
+            if (time.perf_counter() - self.start_time) > 20:
+                break
         return self.best_child(c_param=0)
 
 
-    ## need a get_legal_actions() for own moves and another one for opponent moves
+    ## 
     def get_legal_actions(self):
         """
         construct list of all possible actions from current state
-        returns a dynamic list
+        returns a list
         """
-        return list(self.state.legal_moves)
+        #print(self.color)
+        all_moves = list(self.state.legal_moves)
+        #print(all_moves)
+        legal_moves = []
+        for move in all_moves:
+            square = chess.parse_square(move.uci()[0:2])
+            #print(square)
+            curr_color = self.baseboard_state.piece_at(square).color
+            #print(curr_color)
+            
+            if curr_color is self.color:
+                
+                legal_moves.append(move)
+                #print(legal_moves)
+
+        
+        
+            
+        return legal_moves
+            
     
     def is_game_over(self):
         """
         checks if either of the kings have been taken
         returns True or False
         """
+        
         if self.state.king(chess.WHITE) is None or self.state.king(chess.BLACK) is None:
+            return True
+        elif self.num_iter > self.max_iter:
             return True
         return False
 
@@ -201,23 +241,6 @@ class MCTS_Node():
         """
         
         # update board with chosen move
-        self.state.push(action)
-        
-        # randomly get opponent move
-        
+        self.state.push(action)        
         
         return self.state
-        
-    
-    '''
-    NEED TO IMPLEMENT:
-        get_legal_actions(self)
-        is_game_over(self)
-        game_result(self)
-        move(self, action)
-    '''
-
-    #def main():
-        #root = MCTS_Node(state = initial_state)
-        #selected_node = root.best_action()
-        #return
