@@ -16,8 +16,9 @@ from player import Player
 import numpy as np
 #from MCTS import *
 import MCTS
+import time
 
-MCTS_Node = MCTS.MCTS_Node()
+#MCTS_Node = MCTS.MCTS_Node()
 
 
 # TODO: Rename this class to what you would like your bot to be named during the game.
@@ -49,14 +50,7 @@ class TheRookies(Player):
         self.opponent_rooks = None
         self.opponent_pawns = None
         
-        self.chess_dict = {
-            "k" : self.opponent_king_loc,
-            "q" : self.opponent_queens,
-            "n" : self.opponent_knights,
-            "r" : self.opponent_rooks,
-            "p" : self.opponent_pawns,
-            "b" : self.opponent_bishops
-        }
+        self.chess_dict = None
         
         self.piece_reward = {
             "q" : 8,
@@ -88,14 +82,16 @@ class TheRookies(Player):
             return "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr"
         '''
         self.game_board = chess.BaseBoard()
+        #self.game_board = chess.Board()
         
         self.board = board
         self.color = color
         
         # Create root node for MCTS
-        
+        '''
         self.root = MCTS(board, 0)
         self.curr = self.root
+        '''
         
         # Set king location
         if self.color == chess.WHITE:
@@ -127,18 +123,27 @@ class TheRookies(Player):
             
             self.pawns = [chess.square(x, 6) for x in range(8)]
         
+        self.chess_dict = {
+            "k" : self.opponent_king_loc,
+            "q" : self.opponent_queens,
+            "n" : self.opponent_knights,
+            "r" : self.opponent_rooks,
+            "p" : self.opponent_pawns,
+            "b" : self.opponent_bishops
+        }
         
         pass
     
     def find_piece(self, location):
         
-            
+        
         for x in self.chess_dict:
-            
-            for piece in self.chess_dict[x]:
+            if self.chess_dict[x] is not None:
                 
-                if not piece[1] and piece[0] == location:
-                    return (x, piece)
+                for piece in self.chess_dict[x]:
+                    
+                    if not piece[1] and piece[0] == location:
+                        return (x, piece)
         
         return None
         
@@ -211,8 +216,8 @@ class TheRookies(Player):
         # If no castling occured, keep eye on king
         if not self.opponent_castled:
             
-            file = chess.square_file(self.opponent_king_loc)
-            rank = chess.square_rank(self.opponent_king_loc)
+            file = chess.square_file(self.opponent_king_loc[0][0])
+            rank = chess.square_rank(self.opponent_king_loc[0][0])
             
             # Fully utilize all 9 squares for sense
             if file == 0:
@@ -320,40 +325,44 @@ class TheRookies(Player):
             (A6, None), (B6, None), (C8, None)
         ]
         """
-        
+        # iterate over every square in sense_result
         for location, piece in sense_result:
             
             self.board.set_piece_at(location, piece)
             
             result = self.find_piece(location)
 
-                
+            # we think there's a piece there
             if result is not None and result[0] != piece.symbol():
                 result[1][1] = True
                 
-                
+            # if there's a piece there, and it is not our piece
             if piece is not None and piece.color != self.color:
                 
                 piece_type = piece.symbol().lower()
                 
-                if piece_type == result[0]:
+                # if the piece matches what we think is there, then okay
+                if result is not None and piece_type == result[0]:
                     
                     continue
-                
+                # if piece doesn't match what is there
                 else:
                     
+                    # look through dictionary to check all pieces of that type, and add the ones that are in limbo to list
                     limbo = []
+                    print(type(piece_type))
                     for chess_piece in self.chess_dict[piece_type]:
                     
                         if chess_piece[1] == True:
                             
                             limbo.append(chess_piece)
                     
+                    # if nothing is in limbo, add all of them
                     if len(limbo) == 0:
                         
                         limbo = self.chess_dict[piece_type]
                     
-                    
+                    # find closest piece out of possible options
                     distance = [chess.square_distance(location, x) for x in limbo]
                     
                     limbo[np.argmin(distance)] = [location, False]
@@ -396,14 +405,20 @@ class TheRookies(Player):
         # Run MCTS while time still available
         # Selection, Expansion, Simulation, Backprop
         # Need to make tree of data
-        initial_state = self.board.copy()
-        root = MCTS_Node(state = initial_state, reward_val = 0, color = self.color)
+        curr_fen = self.game_board.board_fen()
+        initial_state = chess.Board(curr_fen)
+        start_time = time.perf_counter()
+        
+        #MCTS_Node = MCTS.MCTS_Node()
+        
+        root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, num_iter = 0, max_iter = 15, start_time = start_time)
         selected_move = root.best_action()
         
         
         #if seconds_left == 0:
              # Choose node of same height with best updated reward   
-        choice = random.choice(possible_moves)
+        #choice = random.choice(possible_moves)
+        choice = selected_move
         # Either Promote to Queen or Knight
             
         return choice
