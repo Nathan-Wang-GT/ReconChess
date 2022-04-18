@@ -190,6 +190,11 @@ class TheRookies(Player):
         """
         # TODO: update this method
         
+        
+        # IMPLEMENT Q LEARNING? reward = points from pieces sensed
+        
+        
+        
         # Sense around last captured piece
         if self.captured is not None:
         
