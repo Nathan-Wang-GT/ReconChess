@@ -39,13 +39,15 @@ class MCTS_Node():
         """
         returns list of untried actions from a given state 
         """
-        self.untried_actions = self.get_legal_actions()
+        print("get_untried_actions")
+        self.untried_actions = self.get_legal_actions(self.state)
         return self.untried_actions
 
     def q(self):
         """
         returns difference of wins - losses
         """
+        print("q")
         wins = self.results[1]
         losses = self.results[-1]
         return wins-losses
@@ -54,6 +56,7 @@ class MCTS_Node():
         """
         return number of visits
         """
+        print("n")
         return self.num_visits
     
     def expand(self):
@@ -62,8 +65,9 @@ class MCTS_Node():
         append all possible child nodes (correspond to generated states) to children array,
         return child_node
         """
+        print("expand")
         action = self.untried_actions.pop()
-        next_state = self.move(action)
+        next_state = self.move(self.state, action)
         
         if self.color is chess.WHITE:
             next_color = chess.BLACK
@@ -71,6 +75,7 @@ class MCTS_Node():
             next_color = chess.WHITE
         
         child_node = MCTS_Node(next_state, 0, color = next_color, start_time = self.start_time, parent=self, parent_action=action, num_iter = self.num_iter+1, max_iter = self.max_iter)
+        #print(self.num_iter)
         self.children.append(child_node)
         return child_node
 
@@ -78,6 +83,7 @@ class MCTS_Node():
         """
         check if current node is terminal or not (terminal node indicates game is over)
         """
+        #print("is_terminal_node")
         return self.state.is_game_over()
     
     def rollout(self):
@@ -85,14 +91,20 @@ class MCTS_Node():
         from current state, entire game is simulated until end
         win -> 1, loss -> -1, draw -> 0
         """
+        print("rollout")
         current_rollout_state = self.state
-        while not current_rollout_state.is_game_over():
+        #while not current_rollout_state.is_game_over():
+        #while not self.state.is_game_over():
+        while not self.is_game_over(current_rollout_state):
             #possible_moves = current_rollout_state.get_legal_actions()
-            possible_moves = self.get_legal_actions()
+            #possible_moves = self.get_legal_actions()
+            possible_moves = self.get_legal_actions(current_rollout_state)
             action = self.rollout_policy(possible_moves)
-            #current_rollout_state = current_rollout_state.move(action)
-            current_rollout_state = self.move(action)
-        return current_rollout_state.game_result()
+            current_rollout_state = self.move(current_rollout_state, action)
+            #current_rollout_state = self.move(action)
+            #self.state = self.move(action)
+        return self.game_result(current_rollout_state)
+        
 
     def backprop(self, result):
         """
@@ -101,6 +113,7 @@ class MCTS_Node():
         if result is 1 (win), increment win by 1
         otherwise if result is loss, increment loss by 1
         """
+        print("backprop")
         self.num_visits += 1
         self.results[result] += 1
         if self.parent:
@@ -111,6 +124,7 @@ class MCTS_Node():
         all actions are popped out of get_untried_actions() one by one
         when it is empty (size is 0), it is fully expanded
         """
+        print("is_fully_expanded")
         return len(self.untried_actions) == 0
     
     def best_child(self, c_param=0.1):
@@ -118,6 +132,7 @@ class MCTS_Node():
         once fully expanded, select best child out of children array
         weighs exploitation (c.q()) and exploration (c.n())
         """
+        print("best_child")
         choices_weights = [(c.q() / c.n()) + c_param * np.sqrt((2 * np.log(self.n()) / c.n())) for c in self.children]
         return self.children[np.argmax(choices_weights)]
 
@@ -125,13 +140,16 @@ class MCTS_Node():
         """
         randomly selects a move out of possible moves, AKA random playout
         """
+        print("rollout_policy")
         #print(possible_moves)
+        
         return possible_moves[np.random.randint(len(possible_moves))]
 
     def tree_policy(self):
         """
         select node to run rollout
         """
+        print("tree_policy")
         current_node = self
         while not current_node.is_terminal_node():
             if not current_node.is_fully_expanded():
@@ -145,6 +163,7 @@ class MCTS_Node():
         returns node corresponding to best possible move
         carries out expansion, simulation, and backpropagation
         """
+        print("best_action")
         #num_simulations = 100
         #for i in range(num_simulations):
         while True:
@@ -156,54 +175,69 @@ class MCTS_Node():
         return self.best_child(c_param=0)
 
 
-    ## 
-    def get_legal_actions(self):
+    
+    def get_legal_actions(self, board):
         """
         construct list of all possible actions from current state
         returns a list
         """
+        print("get_legal_actions")
+        #print("color")
         #print(self.color)
-        all_moves = list(self.state.legal_moves)
+        #print("all moves")
+        #all_moves = list(self.state.legal_moves)
+        all_moves = list(board.legal_moves)
         #print(all_moves)
-        legal_moves = []
+        #legal_moves = []
+        '''
         for move in all_moves:
             square = chess.parse_square(move.uci()[0:2])
-            #print(square)
+            print(square)
             curr_color = self.baseboard_state.piece_at(square).color
-            #print(curr_color)
+            print(curr_color)
             
-            if curr_color is self.color:
+            if curr_color == self.color:
                 
                 legal_moves.append(move)
-                #print(legal_moves)
+                print(legal_moves)
+        '''
 
         
         
             
-        return legal_moves
+        #return legal_moves
+        return all_moves
             
     
-    def is_game_over(self):
+    def is_game_over(self, board):
         """
         checks if either of the kings have been taken
         returns True or False
         """
+        print("is_game_over")
         
+        '''
         if self.state.king(chess.WHITE) is None or self.state.king(chess.BLACK) is None:
             return True
         elif self.num_iter > self.max_iter:
             return True
+        '''
+        if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
+            return True
+        elif self.num_iter > self.max_iter:
+            return True
+        
         return False
 
     
-    def game_result(self):
+    def game_result(self, board):
         """
         returns integer corresponding to game result
         return reward value?
         """
-        
+        print("game_result")
         # get all pieces currently on board
-        fen = self.state.board_fen()
+        fen = board.board_fen()
         
         num_w_P = fen.count('P')
         num_w_R = fen.count('R')
@@ -234,13 +268,16 @@ class MCTS_Node():
         
         #return self.reward_val
     
-    def move(self, action):
+    def move(self, board, action):
         """
         change state of board with new action taken
         returns new state
         """
-        
+        print("move")
         # update board with chosen move
-        self.state.push(action)        
+        #self.state.push(action) 
+        #print(self.num_iter)
+        board.push(action)
         
-        return self.state
+        #return self.state
+        return board
