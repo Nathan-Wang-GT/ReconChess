@@ -136,16 +136,18 @@ class TheRookies(Player):
     
     def find_piece(self, location):
         
-        
-        for x in self.chess_dict:
-            if self.chess_dict[x] is not None:
+    
+        for key in self.chess_dict:
+            if self.chess_dict[key] is not None:
                 
-                for piece in self.chess_dict[x]:
+                for piece in self.chess_dict[key]:
                     
+                    # if not limbo mode and locations match
                     if not piece[1] and piece[0] == location:
-                        return (x, piece)
+                        # found it
+                        return (key, piece)
         
-        return None
+        return (None, None)
         
         
     def handle_opponent_move_result(self, captured_piece, captured_square):
@@ -335,10 +337,11 @@ class TheRookies(Player):
             
             self.board.set_piece_at(location, piece)
             
+            # result[0] is piece type (key), result[1] is a specific piece
             result = self.find_piece(location)
 
             # we think there's a piece there
-            if result is not None and result[0] != piece.symbol():
+            if result[0] is not None and (piece is None or result[0] != piece.symbol()):
                 result[1][1] = True
                 
             # if there's a piece there, and it is not our piece
@@ -347,7 +350,7 @@ class TheRookies(Player):
                 piece_type = piece.symbol().lower()
                 
                 # if the piece matches what we think is there, then okay
-                if result is not None and piece_type == result[0]:
+                if result[0] is not None and piece_type == result[0]:
                     
                     continue
                 # if piece doesn't match what is there
@@ -367,6 +370,7 @@ class TheRookies(Player):
                         
                         limbo = self.chess_dict[piece_type]
                     
+                    print(limbo)
                     # find closest piece out of possible options
                     distance = [chess.square_distance(location, x) for x in limbo]
                     
@@ -411,13 +415,19 @@ class TheRookies(Player):
         # Selection, Expansion, Simulation, Backprop
         # Need to make tree of data
         curr_fen = self.game_board.board_fen()
+        #print(curr_fen)
         initial_state = chess.Board(curr_fen)
         start_time = time.perf_counter()
         
         #MCTS_Node = MCTS.MCTS_Node()
         
-        root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, num_iter = 0, max_iter = 15, start_time = start_time)
-        selected_move = root.best_action()
+        root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
+        print("initialized root")
+        # return an action
+        selected_move = root.best_action().parent_action
+        print("have selected the best action")
+        print(selected_move)
+        
         
         
         #if seconds_left == 0:
