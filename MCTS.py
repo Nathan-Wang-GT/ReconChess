@@ -92,9 +92,11 @@ class MCTS_Node():
         else:
             next_color = chess.WHITE
         
+        print("creating new child node")
         child_node = MCTS_Node(next_state, 0, color = next_color, start_time = self.start_time, parent=self, parent_action=action, num_iter = self.num_iter+1, max_iter = self.max_iter)
         #print(self.num_iter)
         self.children.append(child_node)
+        
         return child_node
     
     def game_result(self, board):
@@ -193,9 +195,13 @@ class MCTS_Node():
         elif self.num_iter > self.max_iter:
             return True
         '''
+        print(self.num_iter)
+        print(board.legal_moves)
         if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
             return True
         elif self.num_iter > self.max_iter:
+            return True
+        elif len(list(board.legal_moves)) == 0:
             return True
         
         return False
@@ -205,7 +211,7 @@ class MCTS_Node():
         """
         check if current node is terminal or not (terminal node indicates game is over)
         """
-        #print("is_terminal_node")
+        print("is_terminal_node")
         return self.state.is_game_over()
     
     
@@ -255,6 +261,7 @@ class MCTS_Node():
             #possible_moves = current_rollout_state.get_legal_actions()
             #possible_moves = self.get_legal_actions()
             possible_moves = self.get_legal_actions(current_rollout_state)
+           
             action = self.rollout_policy(possible_moves)
             current_rollout_state = self.move(current_rollout_state, action)
             #current_rollout_state = self.move(action)
@@ -285,6 +292,7 @@ class MCTS_Node():
                 #current_node = current_node.expand()
             else:
                 current_node = current_node.best_child()
+        print("terminal state reached")
         return current_node
 
 
