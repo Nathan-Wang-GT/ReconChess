@@ -139,15 +139,7 @@ class MCTS_Node():
         self.untried_actions = self.get_legal_actions(self.state)
         return self.untried_actions
     
-    
-    def is_fully_expanded(self):
-        """
-        all actions are popped out of get_untried_actions() one by one
-        when it is empty (size is 0), it is fully expanded
-        """
-        print("is_fully_expanded")
-        return len(self.untried_actions) == 0
-    
+        
     
     def get_legal_actions(self, board):
         """
@@ -177,6 +169,15 @@ class MCTS_Node():
             
         #return legal_moves
         return all_moves
+    
+    
+    def is_fully_expanded(self):
+        """
+        all actions are popped out of get_untried_actions() one by one
+        when it is empty (size is 0), it is fully expanded
+        """
+        print("is_fully_expanded")
+        return len(self.untried_actions) == 0
     
     
     def is_game_over(self, board):
@@ -281,6 +282,7 @@ class MCTS_Node():
         while not current_node.is_terminal_node():
             if not current_node.is_fully_expanded():
                 return current_node.expand()
+                #current_node = current_node.expand()
             else:
                 current_node = current_node.best_child()
         return current_node
