@@ -104,7 +104,7 @@ class MCTS_Node():
             
             time.perf_counter() - self.start_time
             #exit(0)
-            if (time.perf_counter() - self.start_time) > 5:
+            if (time.perf_counter() - self.start_time) > 15:
                 #exit(0)
                 break
         return self.best_child(c_param=0)
@@ -173,7 +173,7 @@ class MCTS_Node():
         points_w = num_w_P * 1 + num_w_R * 5 + num_w_N * 3 + num_w_B * 3 + num_w_Q * 8 + num_w_K * 20
         points_b = num_b_p * 1 + num_b_r * 5 + num_b_n * 3 + num_b_b * 3 + num_b_q * 8 + num_b_k * 20
 
-        if self.color is chess.WHITE:
+        if self.color is not chess.WHITE:
             reward = points_w - points_b
         else:
             reward = points_b - points_w
