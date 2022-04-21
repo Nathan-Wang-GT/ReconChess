@@ -307,7 +307,6 @@ class TheRookies(Player):
                 #return 
             
         
-        
         #move = self.choose_move(possible_moves, seconds_left)
         
         #if move is not None and self.board.piece_at(move) is not None:
@@ -335,6 +334,9 @@ class TheRookies(Player):
         """
         # iterate over every square in sense_result
         for location, piece in sense_result:
+            #print(type(piece))
+            #print("current piece in sense:")
+            #print(piece)
             
             self.board.set_piece_at(location, piece)
             self.game_board.set_piece_at(location, piece)
@@ -343,16 +345,22 @@ class TheRookies(Player):
             result = self.find_piece(location)
 
             # we think there's a piece there
+            # result[0] is the key ('p', 'q', etc.)
+            # result[1] is the piece, result[1][0] is the location, result[1][1] is the limbo mode toggle
             if result[0] is not None and (piece is None or result[0] != piece.symbol()):
                 result[1][1] = True
+                # update board by removing piece at square where nothing was sensed
+                if piece is None:
+                    self.game_board.remove_piece_at(location)
                 
-            # if there's a piece there, and it is not our piece
+                
+            # if there's a piece there, and it is not our piece 
             if piece is not None and piece.color != self.color:
                 
-                piece_type = piece.symbol().lower()
+                piece_symbol = piece.symbol().lower()
                 
                 # if the piece matches what we think is there, then okay
-                if result[0] is not None and piece_type == result[0]:
+                if result[0] is not None and piece_symbol == result[0]:
                     
                     continue
                 # if piece doesn't match what is there
@@ -360,8 +368,8 @@ class TheRookies(Player):
                     
                     # look through dictionary to check all pieces of that type, and add the ones that are in limbo to list
                     limbo = []
-                    print(type(piece_type))
-                    for chess_piece in self.chess_dict[piece_type]:
+                    #print(type(piece_type))
+                    for chess_piece in self.chess_dict[piece_symbol]:
                     
                         if chess_piece[1] == True:
                             
@@ -370,13 +378,19 @@ class TheRookies(Player):
                     # if nothing is in limbo, add all of them
                     if len(limbo) == 0:
                         
-                        limbo = self.chess_dict[piece_type]
+                        limbo = self.chess_dict[piece_symbol]
                     
                     print(limbo)
                     # find closest piece out of possible options
                     distance = [chess.square_distance(location, x[0]) for x in limbo]
                     
+                    self.game_board.remove_piece_at(limbo[np.argmin(distance)][0])
+                    
                     limbo[np.argmin(distance)] = [location, False]
+                    # add guess piece back into board
+                    self.game_board.set_piece_at(location, piece)
+                    
+                    
         
         
         # If unique piece was sensed and does not match previous board sense, update (King, Queen)
@@ -426,11 +440,14 @@ class TheRookies(Player):
         print()
         print("about to do MCTS. current game_board:")
         print(self.game_board)
-
+        
+        
         root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
         #print("initialized root")
         # return an action
+        test_time = time.perf_counter()
         selected_move = root.best_action().parent_action
+        print(time.perf_counter()-test_time)
         #print("have selected the best action")
         #print(selected_move)
         
