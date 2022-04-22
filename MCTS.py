@@ -62,12 +62,12 @@ class MCTS_Node():
         returns node corresponding to best possible move
         carries out expansion, simulation, and backpropagation
         """
-        #print("best_action")
+        print("best_action")
         
         while True:
             #v = self.tree_policy()
             
-            moves = list(self.state.legal_moves)
+            moves = list(self.state.pseudo_legal_moves)
             
             if len(moves) == 0:
                 break
@@ -99,12 +99,12 @@ class MCTS_Node():
             #print(v.state)
             #print(reward)
             
-            
+            #print("about to backprop")
             v.backprop(reward)
             
             time.perf_counter() - self.start_time
             #exit(0)
-            if (time.perf_counter() - self.start_time) > 15:
+            if (time.perf_counter() - self.start_time) > 10:
                 #exit(0)
                 break
         return self.best_child(c_param=0)
@@ -201,7 +201,7 @@ class MCTS_Node():
         #print(self.color)
         #print("all moves")
         #all_moves = list(self.state.legal_moves)
-        all_moves = list(board.legal_moves)
+        all_moves = list(board.pseudo_legal_moves)
         #print(all_moves)
         #legal_moves = []
         '''
@@ -239,12 +239,13 @@ class MCTS_Node():
         
         self.depth_iter = self.depth_iter + 1
         #print(self.depth_iter)
+        #print(self.depth_iter)
         #print(board)
 
         if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
             return True
 
-        elif len(list(board.legal_moves)) == 0:
+        elif len(list(board.pseudo_legal_moves)) == 0:
             return True
         
         elif self.depth_iter > self.max_depth_iter:

@@ -162,6 +162,8 @@ class TheRookies(Player):
         if captured_piece:
             self.board.remove_piece_at(captured_square)
             
+            
+            #################### 
             piece = self.game_board.piece_at(captured_square).symbol().lower()
                 
             
@@ -197,7 +199,7 @@ class TheRookies(Player):
         # IMPLEMENT Q LEARNING? reward = points from pieces sensed
         
         
-        print(chess.square_name(self.chess_dict['k'][0][0]))
+        print(chess.square_name(self.chess_dict["k"][0][0]))
         # Sense around last captured piece
         if self.captured is not None:
         
@@ -224,8 +226,8 @@ class TheRookies(Player):
         # If no castling occured, keep eye on king
         if not self.opponent_castled:
             
-            file = chess.square_file(self.chess_dict['k'][0][0])
-            rank = chess.square_rank(self.chess_dict['k'][0][0])
+            file = chess.square_file(self.chess_dict["k"][0][0])
+            rank = chess.square_rank(self.chess_dict["k"][0][0])
             
             # Fully utilize all 9 squares for sense
             if file == 0:
@@ -248,8 +250,8 @@ class TheRookies(Player):
             # Check king location every other time
             if self.num_moves % 2 == 0 or len(self.pawns) == 0:
                 
-                file = chess.square_file(self.chess_dict['k'][0][0])
-                rank = chess.square_rank(self.chess_dict['k'][0][0])
+                file = chess.square_file(self.chess_dict["k"][0][0])
+                rank = chess.square_rank(self.chess_dict["k"][0][0])
                 
                 # Fully utilize all 9 squares for sense
                 if file == 0:
@@ -266,7 +268,7 @@ class TheRookies(Player):
                 
             else:
                 
-                distances = [chess.square_distance(self.chess_dict['k'][0][0], x) for x in self.pawns]
+                distances = [chess.square_distance(self.chess_dict["k"][0][0], x) for x in self.pawns]
                 
                 closest_pawn = self.pawns[np.argmin(distances)]
                 
@@ -337,9 +339,13 @@ class TheRookies(Player):
             #print(type(piece))
             #print("current piece in sense:")
             #print(piece)
+            #print("sense location")
+            #print(location)
             
-            self.board.set_piece_at(location, piece)
+            #self.board.set_piece_at(location, piece)
             self.game_board.set_piece_at(location, piece)
+            
+            #self.chess_dict["k"] = location
             
             # result[0] is piece type (key), result[1] is a specific piece
             result = self.find_piece(location)
@@ -348,6 +354,8 @@ class TheRookies(Player):
             # result[0] is the key ('p', 'q', etc.)
             # result[1] is the piece, result[1][0] is the location, result[1][1] is the limbo mode toggle
             if result[0] is not None and (piece is None or result[0] != piece.symbol()):
+                #print("we think there is a piece here and either sensed nothing or it didn't match what used to be there")
+                
                 result[1][1] = True
                 # update board by removing piece at square where nothing was sensed
                 if piece is None:
@@ -356,15 +364,17 @@ class TheRookies(Player):
                 
             # if there's a piece there, and it is not our piece 
             if piece is not None and piece.color != self.color:
+                #print("it is a piece, but not our piece")
                 
                 piece_symbol = piece.symbol().lower()
                 
                 # if the piece matches what we think is there, then okay
                 if result[0] is not None and piece_symbol == result[0]:
-                    
+                    #print("there was a piece there, and it matches what is currently there")
                     continue
                 # if piece doesn't match what is there
                 else:
+                    #print("new piece doesn't match")
                     
                     # look through dictionary to check all pieces of that type, and add the ones that are in limbo to list
                     limbo = []
@@ -380,13 +390,20 @@ class TheRookies(Player):
                         
                         limbo = self.chess_dict[piece_symbol]
                     
-                    print(limbo)
+                    #print(limbo)
+                    #print(self.chess_dict[piece_symbol])
                     # find closest piece out of possible options
                     distance = [chess.square_distance(location, x[0]) for x in limbo]
                     
                     self.game_board.remove_piece_at(limbo[np.argmin(distance)][0])
                     
-                    limbo[np.argmin(distance)] = [location, False]
+             
+                    limbo[np.argmin(distance)][0] = location
+                    limbo[np.argmin(distance)][1] = False
+                    #print(limbo)
+                    #print(self.chess_dict[piece_symbol])
+                    
+                    #self.chess_dict[piece_symbol][np.where(limbo[np.argmin(distance)][0]), ])
                     # add guess piece back into board
                     self.game_board.set_piece_at(location, piece)
                     
@@ -426,6 +443,29 @@ class TheRookies(Player):
                 return chess.Move(valid_wins.pop(), self.board.king(not self.color))
         '''
         
+        # if can take king, just do it, instead of running MCTS
+    
+        
+        for move in possible_moves:
+            dumb_board = chess.Board(self.game_board.board_fen())
+            if dumb_board.gives_check(move):
+               return move
+            
+            
+    
+        # dumb_board = chess.Board(self.game_board.board_fen())
+        # check_squares = dumb_board.checkers()
+        # print(check_squares)
+        # if len(check_squares) > 0:
+        #     print("their king is in check! let's take them")
+        #     for square in check_squares:
+        #         if self.game_board.color_at(square) == self.color:
+        #             #start_square = chess.parse_square(chess.square_name(square))
+        #             start_square = square
+        #             end_square = self.chess_dict["k"][0][0]
+        #             return chess.Move(start_square, end_square)
+                
+                            
     
         
         # Run MCTS while time still available
@@ -445,8 +485,11 @@ class TheRookies(Player):
         root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
         #print("initialized root")
         # return an action
+        print("initialized a root, about to find best action")
         test_time = time.perf_counter()
+        print("time: 0")
         selected_move = root.best_action().parent_action
+        
         print(time.perf_counter()-test_time)
         #print("have selected the best action")
         #print(selected_move)
@@ -475,19 +518,24 @@ class TheRookies(Player):
         # TODO: implement this method
         
         if taken_move is not None:
-            self.board.push(taken_move)
+            #self.board.push(taken_move)
             
             old_square = chess.parse_square(taken_move.uci()[0:2])
             new_square = chess.parse_square(taken_move.uci()[2:4])
             
             if (len(taken_move.uci()) == 4):
                 self.game_board.set_piece_at(new_square, self.game_board.piece_at(old_square))
+                #self.board.set_piece_at(new_square, self.game_board.piece_at(old_square))
                 
             else:
                 self.game_board.set_piece_at(new_square, self.game_board.piece_at(old_square))
                 self.game_board.set_piece_at(new_square, chess.QUEEN, True)
                 
+                #self.board.set_piece_at(new_square, self.game_board.piece_at(old_square))
+                #self.board.set_piece_at(new_square, chess.QUEEN, True)
+                
             self.game_board.set_piece_at(old_square, None)
+            #self.board.set_piece_at(old_square, None)
                 
             
             
