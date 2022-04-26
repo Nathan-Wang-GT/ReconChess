@@ -85,7 +85,7 @@ class TheRookies(Player):
         self.game_board = chess.BaseBoard()
         #self.game_board = chess.Board()
         
-        self.board = board
+        self.board = board.copy()
         self.color = color
         
         # Create root node for MCTS
@@ -161,7 +161,7 @@ class TheRookies(Player):
         piece = None
         
         if captured_piece:
-            self.board.remove_piece_at(captured_square)
+            #self.board.remove_piece_at(captured_square)
             
             
             #################### 
@@ -465,20 +465,21 @@ class TheRookies(Player):
         
         dumb_board = chess.Board(self.game_board.board_fen())
         dumb_board.turn = self.color
-
+        possible_moves = list(dumb_board.pseudo_legal_moves)
+        
         if self.num_moves == 0:
             if self.color == chess.WHITE:
-                return chess.Move(chess.D2, chess.D3)
+                return chess.Move(chess.E2, chess.E3)
             else:
-                return chess.Move(chess.D7, chess.D6)
+                return chess.Move(chess.E7, chess.E6)
 
-                
+        '''        
         if self.num_moves == 1:
             if self.color == chess.WHITE:
                 return chess.Move(chess.F2, chess.F3)
             else:
                 return chess.Move(chess.F7, chess.F6)
-
+        '''
         for move in possible_moves:
             if chess.parse_square(move.uci()[2:4]) == self.chess_dict["k"][0][0]:
                 return move
@@ -489,16 +490,19 @@ class TheRookies(Player):
                 dumb_board = chess.Board(self.game_board.board_fen())
                 dumb_board.turn = self.color
                 squares = dumb_board.checkers()
-                if chess.parse_square(move.uci()[0:2]) == self.game_board.king(self.color):
+                dumber_board = dumb_board.copy()
+                dumber_board.turn = self.color
+                dumber_board.push(move)
+                if chess.parse_square(move.uci()[0:2]) == self.game_board.king(self.color) and not dumber_board.is_check():
                     king_move = move
-                if len(squares) > 1 and chess.parse_square(move.uci()[0:2]) == self.game_board.king(self.color):
+                if len(squares) > 1 and chess.parse_square(move.uci()[0:2]) == self.game_board.king(self.color) and not dumber_board.is_check():
                     return move
-                elif len(squares) == 1 and chess.parse_square(move.uci()[2:4]) == list(squares)[0]:
+                elif len(squares) == 1 and chess.parse_square(move.uci()[2:4]) == list(squares)[0] and not dumber_board.is_check():
                     return move
             return king_move
         
         #print(dumb_board)
-        #print(possible_moves)
+        print(possible_moves)
         for move in possible_moves:
             
             dumb_board = chess.Board(self.game_board.board_fen())
@@ -537,7 +541,7 @@ class TheRookies(Player):
         #print(self.game_board)
         
         
-        root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
+        root = MCTS.MCTS_Node(state = dumb_board, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
         #print("initialized root")
         # return an action
         #print("initialized a root, about to find best action")

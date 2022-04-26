@@ -72,10 +72,10 @@ class MCTS_Node():
         L_moves = []
         for move in A_moves:
             if self.color == chess.WHITE and self.baseboard_state.king(chess.WHITE) == chess.E1:
-                if not (chess.parse_square(move.uci()[0:2]) == chess.C2 or move.uci()[0:2] == "d3" or chess.parse_square(move.uci()[0:2]) == chess.F3 or chess.parse_square(move.uci()[0:2]) == chess.G2):
+                if not (chess.parse_square(move.uci()[0:2]) == chess.C2 or chess.parse_square(move.uci()[0:2]) == chess.G2 or chess.parse_square(move.uci()[0:2]) == chess.D2 or chess.parse_square(move.uci()[0:2]) == chess.F2):
                     L_moves.append(move)
             elif self.color == chess.BLACK and self.baseboard_state.king(chess.BLACK) == chess.E8:
-                if not (chess.parse_square(move.uci()[0:2]) == chess.C7 or move.uci()[0:2] == "d6" or chess.parse_square(move.uci()[0:2]) == chess.F6 or chess.parse_square(move.uci()[0:2]) == chess.G7):
+                if not (chess.parse_square(move.uci()[0:2]) == chess.C7 or chess.parse_square(move.uci()[0:2]) == chess.G7 or chess.parse_square(move.uci()[0:2]) == chess.D7 or chess.parse_square(move.uci()[0:2]) == chess.F7):
                     L_moves.append(move)
             else:
                 L_moves.append(move)
