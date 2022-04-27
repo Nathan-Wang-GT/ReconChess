@@ -4,12 +4,12 @@
 File Name:      nwang309_chuang371_avitale6.py
 Authors:        Nathan Wang + Celina Huang + Alex Vitale
 Date:           4/2/22
-
 Description:    Python file for my agent.
 Source:         Adapted from recon-chess (https://pypi.org/project/reconchess/)
 """
 
-import random
+#from dbm import dumb
+#import random
 import chess
 from player import Player
 #from collections import defaultdict
@@ -42,6 +42,19 @@ class TheRookies(Player):
         self.opponent_castled = False
         
         
+        
+        # STUFF FOR Q-LEARNING
+        #self.alpha = 0.4
+        #self.gamma = 0.1
+        #self.reward_table = np.zeros(8, 8)
+        #self.actions = [()]
+        #self.dist_vec = [0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 5, 6]
+        #self.sense_locs = 
+        #self.epsilon = 
+        #self.threshold = 0.2
+        
+        
+        
         # Holds array of [piece location, whether it's moved]
         self.opponent_king_loc = None
         self.opponent_knights = None
@@ -57,7 +70,8 @@ class TheRookies(Player):
             "n" : 3,
             "r" : 5,
             "p" : 1,
-            "b" : 3
+            "b" : 3,
+            "k" : 20
         }
         
         #self.keys = ["k", "q", "n", "r", "p", "b"]
@@ -68,25 +82,50 @@ class TheRookies(Player):
     def handle_game_start(self, color, board):
         """
         This function is called at the start of the game.
-
         :param color: chess.BLACK or chess.WHITE -- your color assignment for the game
         :param board: chess.Board -- initial board state
         :return:
         """
         # TODO: implement this method
-        
-        '''
-        if (color == chess.WHITE):
-            return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-        else:
-            return "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr"
-        '''
+
         self.game_board = chess.BaseBoard()
         #self.game_board = chess.Board()
         
-        self.board = board
+        self.board = board.copy()
         self.color = color
         
+        # initialize reward_table with values at game start
+        '''
+        if self.color == chess.WHITE:
+            self.reward_table[6][1] = 14
+            self.reward_table[6][2] = 17
+            self.reward_table[6][3] = 34
+            self.reward_table[6][4] = 34
+            self.reward_table[6][5] = 29
+            self.reward_table[6][6] = 14
+            
+            self.reward_table[5][1] = 3
+            self.reward_table[5][2] = 3
+            self.reward_table[5][3] = 3
+            self.reward_table[5][4] = 3
+            self.reward_table[5][5] = 3
+            self.reward_table[5][6] = 3
+            
+        else:
+            self.reward_table[1][1] = 14
+            self.reward_table[1][2] = 17
+            self.reward_table[1][3] = 34
+            self.reward_table[1][4] = 34
+            self.reward_table[1][5] = 29
+            self.reward_table[1][6] = 14
+           
+            self.reward_table[2][1] = 3
+            self.reward_table[2][2] = 3
+            self.reward_table[2][3] = 3
+            self.reward_table[2][4] = 3
+            self.reward_table[2][5] = 3
+            self.reward_table[2][6] = 3
+        '''
         # Create root node for MCTS
         '''
         self.root = MCTS(board, 0)
@@ -103,15 +142,7 @@ class TheRookies(Player):
             self.opponent_knights = [[chess.B8, False], [chess.G8, False]]
             
             self.pawns = [chess.square(x, 1) for x in range(8)]
-            '''
-            self.king = [chess.E1]
-            self.queens = [chess.D1]
-            self.bishops = [chess.C1, chess.F1]
-            self.opponent_rooks = [[chess.A1, False], [chess.H1, False]]
-            self.opponent_knights = [[chess.B1, False], [chess.G1, False]]
-            '''
-            
-            
+
         else:
             self.opponent_king_loc = [[chess.E1, False]]
             self.opponent_pawns = [[chess.square(x, 1), False] for x in range(8)]
@@ -153,14 +184,13 @@ class TheRookies(Player):
     def handle_opponent_move_result(self, captured_piece, captured_square):
         """
         This function is called at the start of your turn and gives you the chance to update your board.
-
         :param captured_piece: bool - true if your opponents captured your piece with their last move
         :param captured_square: chess.Square - position where your piece was captured
         """
         piece = None
         
         if captured_piece:
-            self.board.remove_piece_at(captured_square)
+            #self.board.remove_piece_at(captured_square)
             
             
             #################### 
@@ -185,21 +215,21 @@ class TheRookies(Player):
     def choose_sense(self, possible_sense, possible_moves, seconds_left):
         """
         This function is called to choose a square to perform a sense on.
-
         :param possible_sense: List(chess.SQUARES) -- list of squares to sense around
         :param possible_moves: List(chess.Moves) -- list of acceptable moves based on current board
         :param seconds_left: float -- seconds left in the game
-
         :return: chess.SQUARE -- the center of 3x3 section of the board you want to sense
         :example: choice = chess.A1
         """
         # TODO: update this method
         
+        # for first 1 or 2 (?) turns, sense king location
+        if self.num_moves <= 1:
+            if self.color == chess.WHITE:
+                return chess.E7     
+            return chess.E2
         
-        # IMPLEMENT Q LEARNING? reward = points from pieces sensed
-        
-        
-        print(chess.square_name(self.chess_dict["k"][0][0]))
+        #print(chess.square_name(self.chess_dict["k"][0][0]))
         # Sense around last captured piece
         if self.captured is not None:
         
@@ -221,10 +251,49 @@ class TheRookies(Player):
                 
             return chess.square(file, rank)
         
+        # IMPLEMENT Q LEARNING? reward = points from pieces sensed
+        
+        #rewards_new = np.copy(self.reward_table)
+        
+        #king_dist = chess.square_distance()
+        
+        #print(1 - np.exp(-1 * self.num_moves))
+        print(1 - np.power(1.5, -1 * self.num_moves))
+        if np.random.random() > (1 - np.power(1.5, -1 * self.num_moves)) or self.chess_dict["k"][0][1]:
+            print("randomly selecting")
+            possible_loc = []
+            for i in range(1,7):
+                for j in range (1,7):
+                    curr_square = chess.square(j, i)
+                    king_dist = chess.square_distance(curr_square, self.chess_dict["k"][0][0])
+                    for x in range(6-king_dist):
+                       possible_loc.append(curr_square) 
+            print (possible_loc)
+            return possible_loc[np.random.randint(len(possible_loc))]
+        
+        else:
+            print("sense king")
+            file = chess.square_file(self.chess_dict["k"][0][0])
+            rank = chess.square_rank(self.chess_dict["k"][0][0])
+            
+            # Fully utilize all 9 squares for sense
+            if file == 0:
+                file = 1
+            elif file == 7:
+                file = 6
+                
+            if rank == 0:
+                rank = 1
+            elif rank == 7:
+                rank = 6
+            
+            return chess.square(file, rank)
         
         
+        '''
         # If no castling occured, keep eye on king
-        if not self.opponent_castled:
+        #print(self.chess_dict["k"])
+        if not self.chess_dict["k"][0][1]:
             
             file = chess.square_file(self.chess_dict["k"][0][0])
             rank = chess.square_rank(self.chess_dict["k"][0][0])
@@ -246,6 +315,18 @@ class TheRookies(Player):
         
         # If castled, keep track of 
         else:
+
+            if self.opponent_castled:
+                if self.color == chess.WHITE:
+                    return chess.B7
+                else:
+                    return chess.B2
+            else:
+                self.opponent_castled = True
+                if self.color == chess.WHITE:
+                    return chess.G7
+                else:
+                    return chess.G2
             
             # Check king location every other time
             if self.num_moves % 2 == 0 or len(self.pawns) == 0:
@@ -308,23 +389,15 @@ class TheRookies(Player):
                 
                 #return 
             
-        
-        #move = self.choose_move(possible_moves, seconds_left)
-        
-        #if move is not None and self.board.piece_at(move) is not None:
-        #    return move.to_square
-        
-        #for location, piece in self.board.piece_map().items():
-        #    if piece.color == self.color:
-        #        possible_sense.remove(location)
-    
-        #return random.choice(possible_sense)
+        '''
+       
         
     def handle_sense_result(self, sense_result):
+        print(chess.square_name(sense_result[4][0]))
+
         """
         This is a function called after your picked your 3x3 square to sense and gives you the chance to update your
         board.
-
         :param sense_result: A list of tuples, where each tuple contains a :class:`Square` in the sense, and if there
                              was a piece on the square, then the corresponding :class:`chess.Piece`, otherwise `None`.
         :example:
@@ -334,13 +407,12 @@ class TheRookies(Player):
             (A6, None), (B6, None), (C8, None)
         ]
         """
+        new_reward = 0
+        
+        sensed_square = sense_result[5][0]
+        
         # iterate over every square in sense_result
-        for location, piece in sense_result:
-            #print(type(piece))
-            #print("current piece in sense:")
-            #print(piece)
-            #print("sense location")
-            #print(location)
+        for location, piece in sense_result:          
             
             #self.board.set_piece_at(location, piece)
             self.game_board.set_piece_at(location, piece)
@@ -353,9 +425,8 @@ class TheRookies(Player):
             # we think there's a piece there
             # result[0] is the key ('p', 'q', etc.)
             # result[1] is the piece, result[1][0] is the location, result[1][1] is the limbo mode toggle
-            if result[0] is not None and (piece is None or result[0] != piece.symbol()):
+            if result[0] is not None and (piece is None or result[0] != piece.symbol().lower()):
                 #print("we think there is a piece here and either sensed nothing or it didn't match what used to be there")
-                
                 result[1][1] = True
                 # update board by removing piece at square where nothing was sensed
                 if piece is None:
@@ -367,6 +438,8 @@ class TheRookies(Player):
                 #print("it is a piece, but not our piece")
                 
                 piece_symbol = piece.symbol().lower()
+                
+                new_reward = new_reward + self.piece_reward[piece_symbol]
                 
                 # if the piece matches what we think is there, then okay
                 if result[0] is not None and piece_symbol == result[0]:
@@ -390,9 +463,7 @@ class TheRookies(Player):
                         
                         limbo = self.chess_dict[piece_symbol]
                     
-                    #print(limbo)
-                    #print(self.chess_dict[piece_symbol])
-                    # find closest piece out of possible options
+    
                     distance = [chess.square_distance(location, x[0]) for x in limbo]
                     
                     self.game_board.remove_piece_at(limbo[np.argmin(distance)][0])
@@ -400,15 +471,13 @@ class TheRookies(Player):
              
                     limbo[np.argmin(distance)][0] = location
                     limbo[np.argmin(distance)][1] = False
-                    #print(limbo)
-                    #print(self.chess_dict[piece_symbol])
-                    
-                    #self.chess_dict[piece_symbol][np.where(limbo[np.argmin(distance)][0]), ])
+    
                     # add guess piece back into board
                     self.game_board.set_piece_at(location, piece)
                     
                     
-        
+        # update reward_table with new reward value at sensed square
+        #self.reward_table[chess.square_rank(sensed_square)][chess.square_file(sensed_square)] = new_reward
         
         # If unique piece was sensed and does not match previous board sense, update (King, Queen)
         
@@ -418,9 +487,10 @@ class TheRookies(Player):
         pass
 
     def choose_move(self, possible_moves, seconds_left):
+
+        print(self.game_board)
         """
         Choose a move to enact from a list of possible moves.
-
         :param possible_moves: List(chess.Moves) -- list of acceptable moves based only on pieces
         :param seconds_left: float -- seconds left to make a move
         
@@ -445,12 +515,55 @@ class TheRookies(Player):
         
         # if can take king, just do it, instead of running MCTS
     
+
         
+        dumb_board = chess.Board(self.game_board.board_fen())
+        dumb_board.turn = self.color
+        possible_moves = list(dumb_board.pseudo_legal_moves)
+        
+        if self.num_moves == 0:
+            if self.color == chess.WHITE:
+                return chess.Move(chess.E2, chess.E3)
+            else:
+                return chess.Move(chess.E7, chess.E6)
+
+        '''        
+        if self.num_moves == 1:
+            if self.color == chess.WHITE:
+                return chess.Move(chess.F2, chess.F3)
+            else:
+                return chess.Move(chess.F7, chess.F6)
+        '''
         for move in possible_moves:
-            dumb_board = chess.Board(self.game_board.board_fen())
-            if dumb_board.gives_check(move):
-               return move
+            if chess.parse_square(move.uci()[2:4]) == self.chess_dict["k"][0][0]:
+                return move
+        
+        if dumb_board.is_check():
+            king_move = None
+            for move in possible_moves:
+                dumb_board = chess.Board(self.game_board.board_fen())
+                dumb_board.turn = self.color
+                squares = dumb_board.checkers()
+                dumber_board = dumb_board.copy()
+                dumber_board.turn = self.color
+                dumber_board.push(move)
+                if chess.parse_square(move.uci()[0:2]) == self.game_board.king(self.color) and not dumber_board.is_check():
+                    king_move = move
+                if len(squares) > 1 and chess.parse_square(move.uci()[0:2]) == self.game_board.king(self.color) and not dumber_board.is_check():
+                    return move
+                elif len(squares) == 1 and chess.parse_square(move.uci()[2:4]) == list(squares)[0] and not dumber_board.is_check():
+                    return move
+            return king_move
+        
+        #print(dumb_board)
+        #print(possible_moves)
+        for move in possible_moves:
             
+            dumb_board = chess.Board(self.game_board.board_fen())
+            dumb_board.turn = self.color
+            if dumb_board.gives_check(move):
+                return move
+    
             
     
         # dumb_board = chess.Board(self.game_board.board_fen())
@@ -478,19 +591,19 @@ class TheRookies(Player):
         
         #MCTS_Node = MCTS.MCTS_Node()
         print()
-        print("about to do MCTS. current game_board:")
-        print(self.game_board)
+        #print("about to do MCTS. current game_board:")
+        #print(self.game_board)
         
         
-        root = MCTS.MCTS_Node(state = initial_state, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
+        root = MCTS.MCTS_Node(state = dumb_board, reward_val = 0, color = self.color, width_iter = 0, depth_iter = 0, start_time = start_time)
         #print("initialized root")
         # return an action
-        print("initialized a root, about to find best action")
+        #print("initialized a root, about to find best action")
         test_time = time.perf_counter()
-        print("time: 0")
-        selected_move = root.best_action().parent_action
+        #print("time: 0")
+        selected_move = root.best_action()
         
-        print(time.perf_counter()-test_time)
+        #print(time.perf_counter()-test_time)
         #print("have selected the best action")
         #print(selected_move)
         
@@ -508,7 +621,6 @@ class TheRookies(Player):
         """
         This is a function called at the end of your turn/after your move was made and gives you the chance to update
         your board.
-
         :param requested_move: chess.Move -- the move you intended to make
         :param taken_move: chess.Move -- the move that was actually made
         :param reason: String -- description of the result from trying to make requested_move
@@ -516,7 +628,7 @@ class TheRookies(Player):
         :param captured_square: chess.Square - position where you captured the piece
         """
         # TODO: implement this method
-        
+        print(taken_move)
         if taken_move is not None:
             #self.board.push(taken_move)
             
@@ -524,17 +636,21 @@ class TheRookies(Player):
             new_square = chess.parse_square(taken_move.uci()[2:4])
             
             if (len(taken_move.uci()) == 4):
+                print(old_square)
+                print(new_square)
                 self.game_board.set_piece_at(new_square, self.game_board.piece_at(old_square))
                 #self.board.set_piece_at(new_square, self.game_board.piece_at(old_square))
                 
             else:
+                print(":(")
                 self.game_board.set_piece_at(new_square, self.game_board.piece_at(old_square))
-                self.game_board.set_piece_at(new_square, chess.QUEEN, True)
+                self.game_board.set_piece_at(new_square, chess.Piece(chess.QUEEN, self.color), True)
                 
                 #self.board.set_piece_at(new_square, self.game_board.piece_at(old_square))
                 #self.board.set_piece_at(new_square, chess.QUEEN, True)
                 
             self.game_board.set_piece_at(old_square, None)
+            print(self.game_board.piece_at(new_square))
             #self.board.set_piece_at(old_square, None)
                 
             
@@ -546,7 +662,6 @@ class TheRookies(Player):
     def handle_game_end(self, winner_color, win_reason):  # possible GameHistory object...
         """
         This function is called at the end of the game to declare a winner.
-
         :param winner_color: Chess.BLACK/chess.WHITE -- the winning color
         :param win_reason: String -- the reason for the game ending
         """
@@ -562,11 +677,3 @@ class TheRookies(Player):
         # DO NOT RETURN!
         
         pass
-    
-    
-    
-	
-
-		
-	
-	
