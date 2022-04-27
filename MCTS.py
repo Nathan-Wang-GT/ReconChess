@@ -4,7 +4,6 @@
 File Name:      MCTS.py
 Authors:        Nathan Wang + Celina Huang + Alex Vitale
 Date:           4/2/22
-
 Description:    Python file for running MCTS.
 Source:         Adapted from https://ai-boson.github.io/mcts/
 """
@@ -39,6 +38,7 @@ class MCTS_Node():
         self.depth_iter = depth_iter
         self.max_depth_iter = 5
         self.start_time = start_time
+        self.rewards = []
         
         return
     
@@ -62,13 +62,28 @@ class MCTS_Node():
         returns node corresponding to best possible move
         carries out expansion, simulation, and backpropagation
         """
-        print("best_action")
-        
+        #print("best_action")
+        self.state.turn = self.color
+        #print(self.state)
+        #print(self.color == chess.BLACK)
+        #print(list(self.state.pseudo_legal_moves))
+        A_moves = list(self.state.pseudo_legal_moves).copy()
+        L_moves = []
+        for move in A_moves:
+            if self.color == chess.WHITE and self.baseboard_state.king(chess.WHITE) == chess.E1:
+                if not (chess.parse_square(move.uci()[0:2]) == chess.C2 or chess.parse_square(move.uci()[0:2]) == chess.G2 or chess.parse_square(move.uci()[0:2]) == chess.D2 or chess.parse_square(move.uci()[0:2]) == chess.F2):
+                    L_moves.append(move)
+            elif self.color == chess.BLACK and self.baseboard_state.king(chess.BLACK) == chess.E8:
+                if not (chess.parse_square(move.uci()[0:2]) == chess.C7 or chess.parse_square(move.uci()[0:2]) == chess.G7 or chess.parse_square(move.uci()[0:2]) == chess.D7 or chess.parse_square(move.uci()[0:2]) == chess.F7):
+                    L_moves.append(move)
+            else:
+                L_moves.append(move)
+
+        self.rewards = [[0,0]] * len(L_moves)
         while True:
             #v = self.tree_policy()
             
-            moves = list(self.state.pseudo_legal_moves)
-            
+            moves = L_moves.copy()
             if len(moves) == 0:
                 break
             
@@ -80,33 +95,22 @@ class MCTS_Node():
             
             temp_board.push(rand_move)
             
-            if self.color is chess.WHITE:
-                next_color = chess.BLACK
-            else:
-                next_color = chess.WHITE
-            
-            new_node = MCTS_Node(temp_board, 0, color = next_color, start_time = self.start_time, parent=self, parent_action=rand_move, width_iter = self.width_iter+1, depth_iter = 1)
+            new_node = MCTS_Node(temp_board, 0, color = self.color, start_time = self.start_time, parent=self, parent_action=rand_move, width_iter = self.width_iter+1, depth_iter = 1)
             
             v = new_node
             
             self.children.append(v)
-                    
-             
-            #print("tree created, getting reward")
-            #exit(0)
+
             reward = v.rollout()
-            #print(v.depth_iter)
-            #print(v.state)
-            #print(reward)
-            
-            #print("about to backprop")
+            self.rewards[rand_ind] = [self.rewards[rand_ind][0] + reward, self.rewards[rand_ind][1] + 1]
+ 
             v.backprop(reward)
             
             time.perf_counter() - self.start_time
-            #exit(0)
-            if (time.perf_counter() - self.start_time) > 10:
-                #exit(0)
+            
+            if (time.perf_counter() - self.start_time) > 8:
                 break
+        return L_moves[np.argmax([i[0]/(i[1]+1) for i in self.rewards])]
         return self.best_child(c_param=0)
     
     
@@ -127,11 +131,10 @@ class MCTS_Node():
         return child_node
         """
         #print("expand")
-        #print(self.get_legal_actions(self.state))
+
         action = self.untried_actions.pop()
         next_state = self.move(self.state, action)
-        
-        if self.color is chess.WHITE:
+        if self.color == chess.WHITE:
             next_color = chess.BLACK
         else:
             next_color = chess.WHITE
@@ -173,12 +176,12 @@ class MCTS_Node():
         points_w = num_w_P * 1 + num_w_R * 5 + num_w_N * 3 + num_w_B * 3 + num_w_Q * 8 + num_w_K * 20
         points_b = num_b_p * 1 + num_b_r * 5 + num_b_n * 3 + num_b_b * 3 + num_b_q * 8 + num_b_k * 20
 
-        if self.color is not chess.WHITE:
+        if self.color == chess.WHITE:
             reward = points_w - points_b
         else:
             reward = points_b - points_w
-            
-        return np.sign(reward)
+
+        return reward
     
 
     def get_untried_actions(self):
@@ -197,13 +200,9 @@ class MCTS_Node():
         returns a list
         """
         #print("get_legal_actions")
-        #print("color")
-        #print(self.color)
-        #print("all moves")
-        #all_moves = list(self.state.legal_moves)
+
         all_moves = list(board.pseudo_legal_moves)
-        #print(all_moves)
-        #legal_moves = []
+
         '''
         for move in all_moves:
             square = chess.parse_square(move.uci()[0:2])
@@ -238,9 +237,7 @@ class MCTS_Node():
         #print("is_game_over")
         
         self.depth_iter = self.depth_iter + 1
-        #print(self.depth_iter)
-        #print(self.depth_iter)
-        #print(board)
+
 
         if board.king(chess.WHITE) is None or board.king(chess.BLACK) is None:
             return True
@@ -305,6 +302,7 @@ class MCTS_Node():
         """
         #print("rollout")
         current_rollout_state = self.state
+        self.state.turn = not self.color
         
         while not self.is_game_over(current_rollout_state):
       
@@ -312,6 +310,8 @@ class MCTS_Node():
             
             action = self.rollout_policy(possible_moves)
             current_rollout_state = self.move(current_rollout_state, action)
+            #print(current_rollout_state.turn)
+            #print(current_rollout_state)
    
         return self.game_result(current_rollout_state)
          
@@ -327,7 +327,7 @@ class MCTS_Node():
         #print(np.random.randint(len(possible_moves)))
         return possible_moves[np.random.randint(len(possible_moves))]
 
-
+    '''
     def tree_policy(self):
         """
         select node to run rollout
@@ -342,7 +342,4 @@ class MCTS_Node():
                 current_node = current_node.best_child()
         #print("terminal state reached")
         return current_node
-
-
-    
-
+    '''
